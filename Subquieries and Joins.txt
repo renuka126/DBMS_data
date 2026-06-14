@@ -1,0 +1,202 @@
+-- =========================================
+-- STEP 1: ENABLE FOREIGN KEY SUPPORT
+-- =========================================
+PRAGMA foreign_keys = ON;
+
+-- =========================================
+-- STEP 2: CREATE TABLES
+-- =========================================
+
+-- Table for student details
+CREATE TABLE students (
+    student_id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    gender TEXT,
+    age INTEGER,
+    attendance_percentage REAL,
+    study_hours_per_week REAL,
+    parental_education TEXT,
+    internet_access TEXT
+);
+
+-- Table for subjects
+CREATE TABLE subjects (
+    subject_id INTEGER PRIMARY KEY,
+    subject_name TEXT NOT NULL
+);
+
+-- Table for marks (with foreign keys and cascade delete)
+CREATE TABLE marks (
+    mark_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id INTEGER,
+    subject_id INTEGER,
+    internal_marks INTEGER,
+    assignment_marks INTEGER,
+    final_marks INTEGER,
+    FOREIGN KEY (student_id) REFERENCES students(student_id) ON DELETE CASCADE,
+    FOREIGN KEY (subject_id) REFERENCES subjects(subject_id) ON DELETE CASCADE
+);
+
+-- =========================================
+-- STEP 3: INSERT SAMPLE DATA
+-- =========================================
+
+-- Insert students
+INSERT INTO students (student_id, name, gender, age, attendance_percentage, study_hours_per_week, parental_education, internet_access)
+VALUES
+(1, 'Aarav Sharma', 'M', 20, 85.5, 10, 'Graduate', 'Yes'),
+(2, 'Priya Singh', 'F', 21, 60.0, 4, 'High School', 'No'),
+(3, 'Rohan Patel', 'M', 19, 95.0, 15, 'Postgraduate', 'Yes'),
+(4, 'Sneha Iyer', 'F', 20, 45.0, 2, 'High School', 'Yes'),
+(5, 'Vikram Joshi', 'M', 22, 70.0, 8, 'Graduate', 'No');
+
+-- Insert subjects
+INSERT INTO subjects (subject_id, subject_name)
+VALUES
+(1, 'Database Management'),
+(2, 'Python for Data Science');
+
+-- Insert marks
+INSERT INTO marks (student_id, subject_id, internal_marks, assignment_marks, final_marks)
+VALUES
+(1, 1, 18, 9, 75),
+(1, 2, 16, 8, 70),
+(2, 1, 10, 5, 35),
+(2, 2, 8, 4, 30),
+(3, 1, 19, 10, 88),
+(3, 2, 18, 9, 85),
+(4, 1, 9, 4, 32),
+(4, 2, 7, 3, 28),
+(5, 1, 14, 7, 60),
+(5, 2, 13, 6, 58);
+
+-- =========================================
+-- STEP 4: BASIC QUERIES
+-- =========================================
+
+-- View all student records with marks
+SELECT s.student_id, s.name, sub.subject_name, m.final_marks
+FROM students s
+JOIN marks m ON s.student_id = m.student_id
+JOIN subjects sub ON m.subject_id = sub.subject_id;
+
+-- Calculate total marks per student
+SELECT s.student_id, s.name, SUM(m.final_marks) AS total_marks
+FROM students s
+JOIN marks m ON s.student_id = m.student_id
+GROUP BY s.student_id, s.name;
+
+-- Pass/Fail status using CASE
+SELECT s.student_id, s.name, m.final_marks,
+       CASE WHEN m.final_marks >= 40 THEN 'Pass' ELSE 'Fail' END AS status
+FROM students s
+JOIN marks m ON s.student_id = m.student_id;
+
+-- Average attendance and study hours of passing students
+SELECT AVG(s.attendance_percentage) AS avg_attendance,
+       AVG(s.study_hours_per_week) AS avg_study_hours
+FROM students s
+JOIN marks m ON s.student_id = m.student_id
+WHERE m.final_marks >= 40;
+
+-- =========================================
+-- STEP 5: JOIN QUERIES
+-- =========================================
+
+-- INNER JOIN: students with their marks (matched rows only)
+SELECT s.name, sub.subject_name, m.final_marks
+FROM students s
+INNER JOIN marks m ON s.student_id = m.student_id
+INNER JOIN subjects sub ON m.subject_id = sub.subject_id;
+
+-- LEFT JOIN: all students, even if they have no marks
+SELECT s.student_id, s.name, m.final_marks
+FROM students s
+LEFT JOIN marks m ON s.student_id = m.student_id;
+
+-- LEFT JOIN to find students with NO marks at all
+SELECT s.student_id, s.name
+FROM students s
+LEFT JOIN marks m ON s.student_id = m.student_id
+WHERE m.mark_id IS NULL;
+
+-- JOIN with aggregation: total and average marks per student
+SELECT s.student_id, s.name,
+       SUM(m.final_marks) AS total_marks,
+       AVG(m.final_marks) AS avg_marks
+FROM students s
+JOIN marks m ON s.student_id = m.student_id
+GROUP BY s.student_id, s.name;
+
+-- JOIN across all three tables with filtering
+SELECT s.name, sub.subject_name, m.final_marks
+FROM students s
+JOIN marks m ON s.student_id = m.student_id
+JOIN subjects sub ON m.subject_id = sub.subject_id
+WHERE sub.subject_name = 'Database Management';
+
+-- =========================================
+-- STEP 6: SUBQUERIES
+-- =========================================
+
+-- Students who scored above the overall average final marks
+SELECT s.name, m.final_marks
+FROM students s
+JOIN marks m ON s.student_id = m.student_id
+WHERE m.final_marks > (SELECT AVG(final_marks) FROM marks);
+
+-- Students who failed in any subject (final_marks < 40)
+SELECT name
+FROM students
+WHERE student_id IN (
+    SELECT student_id FROM marks WHERE final_marks < 40
+);
+
+-- Subquery in FROM: find the top scorer overall
+SELECT name, total_marks
+FROM (
+    SELECT s.name, SUM(m.final_marks) AS total_marks
+    FROM students s
+    JOIN marks m ON s.student_id = m.student_id
+    GROUP BY s.student_id, s.name
+) AS student_totals
+ORDER BY total_marks DESC
+LIMIT 1;
+
+-- Correlated subquery: students above their gender's average attendance
+SELECT s1.name, s1.gender, s1.attendance_percentage
+FROM students s1
+WHERE s1.attendance_percentage > (
+    SELECT AVG(s2.attendance_percentage)
+    FROM students s2
+    WHERE s2.gender = s1.gender
+);
+
+-- Students who have never failed any subject
+SELECT name
+FROM students
+WHERE student_id NOT IN (
+    SELECT student_id FROM marks WHERE final_marks < 40
+);
+
+-- EXISTS subquery: students who have at least one mark record
+SELECT name
+FROM students s
+WHERE EXISTS (
+    SELECT 1 FROM marks m WHERE m.student_id = s.student_id
+);
+
+-- =========================================
+-- STEP 7: FOREIGN KEY DEMONSTRATION
+-- =========================================
+
+-- This will FAIL (student_id 99 does not exist in students table)
+-- INSERT INTO marks (student_id, subject_id, internal_marks, assignment_marks, final_marks)
+-- VALUES (99, 1, 15, 7, 65);
+
+-- This will succeed
+INSERT INTO marks (student_id, subject_id, internal_marks, assignment_marks, final_marks)
+VALUES (2, 1, 12, 6, 45);
+
+-- Deleting a student will also delete their marks (because of ON DELETE CASCADE)
+-- DELETE FROM students WHERE student_id = 5;
