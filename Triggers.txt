@@ -73,3 +73,58 @@ BEGIN
     END IF;
 END //
 DELIMITER ;
+
+
+--Simple Examples
+
+-- ─────────────────────────────────────────────
+ AUDIT TABLE + BEFORE UPDATE TRIGGER
+-- ─────────────────────────────────────────────
+
+-- Create audit table
+CREATE TABLE Salary_Audit (
+    Audit_ID   NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    Emp_ID     NUMBER,
+    Old_Salary NUMBER,
+    New_Salary NUMBER,
+    Changed_On DATE,
+    Changed_By VARCHAR2(50)
+);
+
+-- Trigger: preserve old salary before update
+CREATE OR REPLACE TRIGGER trg_salary_backup
+BEFORE UPDATE OF Salary ON EMPLOYEE
+FOR EACH ROW
+BEGIN
+    INSERT INTO Salary_Audit (Emp_ID, Old_Salary, New_Salary, Changed_On, Changed_By)
+    VALUES (:OLD.Emp_ID, :OLD.Salary, :NEW.Salary, SYSDATE, USER);
+END;
+/
+
+-- ─────────────────────────────────────────────
+ AFTER INSERT TRIGGER
+-- ─────────────────────────────────────────────
+
+CREATE OR REPLACE TRIGGER trg_after_insert_emp
+AFTER INSERT ON EMPLOYEE
+FOR EACH ROW
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('New employee added: ' || :NEW.Emp_Name
+        || ' with ID ' || :NEW.Emp_ID);
+END;
+/
+
+-- ─────────────────────────────────────────────
+ BEFORE DELETE TRIGGER (prevent deletion)
+-- ─────────────────────────────────────────────
+
+CREATE OR REPLACE TRIGGER trg_prevent_delete
+BEFORE DELETE ON EMPLOYEE
+FOR EACH ROW
+BEGIN
+    IF :OLD.Salary > 100000 THEN
+        RAISE_APPLICATION_ERROR(-20001,
+            'Cannot delete high-salary employee: ' || :OLD.Emp_Name);
+    END IF;
+END;
+/
