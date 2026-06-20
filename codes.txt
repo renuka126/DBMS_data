@@ -1,0 +1,693 @@
+-- ============================================================
+--         DBMS EXAM — ALL SQL & PL/SQL CODES
+-- ============================================================
+
+
+-- ============================================================
+-- UNIT II — SQL QUERIES
+-- ============================================================
+
+-- ─────────────────────────────────────────────
+-- 1. CREATE TABLES WITH ALL CONSTRAINTS
+-- ─────────────────────────────────────────────
+
+CREATE TABLE DEPARTMENT (
+    Dept_ID   NUMBER       PRIMARY KEY,
+    Dept_Name VARCHAR2(50) NOT NULL,
+    Location  VARCHAR2(50)
+);
+
+CREATE TABLE EMPLOYEE (
+    Emp_ID    NUMBER        PRIMARY KEY,
+    Emp_Name  VARCHAR2(50)  NOT NULL,
+    Email     VARCHAR2(100) UNIQUE,
+    Salary    NUMBER        CHECK (Salary >= 10000),
+    Dept_ID   NUMBER        REFERENCES DEPARTMENT(Dept_ID),
+    Join_Date DATE          DEFAULT SYSDATE
+);
+
+CREATE TABLE PROJECT (
+    Proj_ID   NUMBER        PRIMARY KEY,
+    Proj_Name VARCHAR2(100) NOT NULL,
+    Budget    NUMBER
+);
+
+CREATE TABLE WORKS_ON (
+    Emp_ID  NUMBER REFERENCES EMPLOYEE(Emp_ID),
+    Proj_ID NUMBER REFERENCES PROJECT(Proj_ID),
+    Hours   NUMBER,
+    PRIMARY KEY (Emp_ID, Proj_ID)
+);
+
+-- ─────────────────────────────────────────────
+-- 2. JOINS
+-- ─────────────────────────────────────────────
+
+-- INNER JOIN
+SELECT E.Emp_Name, D.Dept_Name
+FROM EMPLOYEE E
+INNER JOIN DEPARTMENT D ON E.Dept_ID = D.Dept_ID;
+
+-- LEFT JOIN (all employees even without department)
+SELECT E.Emp_Name, D.Dept_Name
+FROM EMPLOYEE E
+LEFT JOIN DEPARTMENT D ON E.Dept_ID = D.Dept_ID;
+
+-- RIGHT JOIN
+SELECT E.Emp_Name, D.Dept_Name
+FROM EMPLOYEE E
+RIGHT JOIN DEPARTMENT D ON E.Dept_ID = D.Dept_ID;
+
+-- FULL OUTER JOIN
+SELECT E.Emp_Name, D.Dept_Name
+FROM EMPLOYEE E
+FULL OUTER JOIN DEPARTMENT D ON E.Dept_ID = D.Dept_ID;
+
+-- SELF JOIN (find employees in same department)
+SELECT A.Emp_Name AS Emp1, B.Emp_Name AS Emp2, A.Dept_ID
+FROM EMPLOYEE A, EMPLOYEE B
+WHERE A.Dept_ID = B.Dept_ID AND A.Emp_ID <> B.Emp_ID;
+
+-- ─────────────────────────────────────────────
+-- 3. GROUP BY + HAVING
+-- ─────────────────────────────────────────────
+
+-- Count employees per department
+SELECT Dept_ID, COUNT(*) AS Emp_Count, AVG(Salary) AS Avg_Salary
+FROM EMPLOYEE
+GROUP BY Dept_ID;
+
+-- Only departments with more than 3 employees
+SELECT Dept_ID, COUNT(*) AS Emp_Count
+FROM EMPLOYEE
+GROUP BY Dept_ID
+HAVING COUNT(*) > 3;
+
+-- Department with highest average salary
+SELECT Dept_ID, AVG(Salary) AS Avg_Sal
+FROM EMPLOYEE
+GROUP BY Dept_ID
+HAVING AVG(Salary) = (
+    SELECT MAX(AVG(Salary)) FROM EMPLOYEE GROUP BY Dept_ID
+);
+
+-- ─────────────────────────────────────────────
+-- 4. NESTED / SUBQUERIES
+-- ─────────────────────────────────────────────
+
+-- Employees earning more than average salary
+SELECT Emp_Name, Salary
+FROM EMPLOYEE
+WHERE Salary > (SELECT AVG(Salary) FROM EMPLOYEE);
+
+-- Employees who work on at least one project
+SELECT Emp_Name FROM EMPLOYEE
+WHERE Emp_ID IN (SELECT DISTINCT Emp_ID FROM WORKS_ON);
+
+-- Employees who don't work on any project
+SELECT Emp_Name FROM EMPLOYEE
+WHERE Emp_ID NOT IN (SELECT Emp_ID FROM WORKS_ON);
+
+-- Correlated subquery: employees earning more than dept avg
+SELECT Emp_Name, Salary, Dept_ID
+FROM EMPLOYEE E
+WHERE Salary > (
+    SELECT AVG(Salary) FROM EMPLOYEE
+    WHERE Dept_ID = E.Dept_ID
+);
+
+-- EXISTS example
+SELECT Emp_Name FROM EMPLOYEE E
+WHERE EXISTS (
+    SELECT 1 FROM WORKS_ON W WHERE W.Emp_ID = E.Emp_ID
+);
+
+-- ─────────────────────────────────────────────
+-- 5. VIEWS
+-- ─────────────────────────────────────────────
+
+-- Create a view
+CREATE VIEW High_Earners AS
+SELECT Emp_Name, Salary, Dept_ID
+FROM EMPLOYEE
+WHERE Salary > 50000;
+
+-- Use view like a table
+SELECT * FROM High_Earners WHERE Dept_ID = 10;
+
+-- View with JOIN
+CREATE VIEW Emp_Dept_View AS
+SELECT E.Emp_ID, E.Emp_Name, E.Salary, D.Dept_Name
+FROM EMPLOYEE E JOIN DEPARTMENT D ON E.Dept_ID = D.Dept_ID;
+
+-- Drop view
+DROP VIEW High_Earners;
+
+
+-- ============================================================
+-- UNIT II — TRIGGERS
+-- ============================================================
+
+-- ─────────────────────────────────────────────
+-- 6. AUDIT TABLE + BEFORE UPDATE TRIGGER
+-- ─────────────────────────────────────────────
+
+-- Create audit table
+CREATE TABLE Salary_Audit (
+    Audit_ID   NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    Emp_ID     NUMBER,
+    Old_Salary NUMBER,
+    New_Salary NUMBER,
+    Changed_On DATE,
+    Changed_By VARCHAR2(50)
+);
+
+-- Trigger: preserve old salary before update
+CREATE OR REPLACE TRIGGER trg_salary_backup
+BEFORE UPDATE OF Salary ON EMPLOYEE
+FOR EACH ROW
+BEGIN
+    INSERT INTO Salary_Audit (Emp_ID, Old_Salary, New_Salary, Changed_On, Changed_By)
+    VALUES (:OLD.Emp_ID, :OLD.Salary, :NEW.Salary, SYSDATE, USER);
+END;
+/
+
+-- ─────────────────────────────────────────────
+-- 7. AFTER INSERT TRIGGER
+-- ─────────────────────────────────────────────
+
+CREATE OR REPLACE TRIGGER trg_after_insert_emp
+AFTER INSERT ON EMPLOYEE
+FOR EACH ROW
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('New employee added: ' || :NEW.Emp_Name
+        || ' with ID ' || :NEW.Emp_ID);
+END;
+/
+
+-- ─────────────────────────────────────────────
+-- 8. BEFORE DELETE TRIGGER (prevent deletion)
+-- ─────────────────────────────────────────────
+
+CREATE OR REPLACE TRIGGER trg_prevent_delete
+BEFORE DELETE ON EMPLOYEE
+FOR EACH ROW
+BEGIN
+    IF :OLD.Salary > 100000 THEN
+        RAISE_APPLICATION_ERROR(-20001,
+            'Cannot delete high-salary employee: ' || :OLD.Emp_Name);
+    END IF;
+END;
+/
+
+
+-- ============================================================
+-- UNIT II — PL/SQL BLOCKS
+-- ============================================================
+
+-- ─────────────────────────────────────────────
+-- 9. BASIC PL/SQL BLOCK
+-- ─────────────────────────────────────────────
+
+DECLARE
+    v_name   EMPLOYEE.Emp_Name%TYPE;
+    v_salary EMPLOYEE.Salary%TYPE;
+    v_emp_id NUMBER := 101;
+BEGIN
+    SELECT Emp_Name, Salary
+    INTO v_name, v_salary
+    FROM EMPLOYEE
+    WHERE Emp_ID = v_emp_id;
+
+    IF v_salary > 50000 THEN
+        DBMS_OUTPUT.PUT_LINE(v_name || ' is a high earner: ' || v_salary);
+    ELSE
+        DBMS_OUTPUT.PUT_LINE(v_name || ' earns: ' || v_salary);
+    END IF;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Employee not found.');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+END;
+/
+
+-- ─────────────────────────────────────────────
+-- 10. EXPLICIT CURSOR
+-- ─────────────────────────────────────────────
+
+DECLARE
+    CURSOR emp_cur IS
+        SELECT Emp_ID, Emp_Name, Salary FROM EMPLOYEE ORDER BY Salary DESC;
+    v_id   EMPLOYEE.Emp_ID%TYPE;
+    v_name EMPLOYEE.Emp_Name%TYPE;
+    v_sal  EMPLOYEE.Salary%TYPE;
+BEGIN
+    OPEN emp_cur;
+    LOOP
+        FETCH emp_cur INTO v_id, v_name, v_sal;
+        EXIT WHEN emp_cur%NOTFOUND;
+        DBMS_OUTPUT.PUT_LINE(v_id || '  ' || v_name || '  ' || v_sal);
+    END LOOP;
+    CLOSE emp_cur;
+END;
+/
+
+-- ─────────────────────────────────────────────
+-- 11. CURSOR FOR LOOP (Simpler syntax)
+-- ─────────────────────────────────────────────
+
+BEGIN
+    FOR rec IN (SELECT Emp_Name, Salary FROM EMPLOYEE WHERE Dept_ID = 10) LOOP
+        DBMS_OUTPUT.PUT_LINE(rec.Emp_Name || ' -> ' || rec.Salary);
+    END LOOP;
+END;
+/
+
+-- ─────────────────────────────────────────────
+-- 12. PROCEDURE — Give bonus to a department
+-- ─────────────────────────────────────────────
+
+CREATE OR REPLACE PROCEDURE give_bonus (
+    p_dept_id IN NUMBER,
+    p_percent IN NUMBER
+) AS
+BEGIN
+    UPDATE EMPLOYEE
+    SET Salary = Salary + (Salary * p_percent / 100)
+    WHERE Dept_ID = p_dept_id;
+    COMMIT;
+    DBMS_OUTPUT.PUT_LINE('Bonus of ' || p_percent || '% applied to Dept ' || p_dept_id);
+EXCEPTION
+    WHEN OTHERS THEN
+        ROLLBACK;
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+END;
+/
+
+-- Execute procedure
+EXEC give_bonus(10, 10);
+
+-- ─────────────────────────────────────────────
+-- 13. FUNCTION — Return total salary of dept
+-- ─────────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION dept_total_salary (
+    p_dept_id IN NUMBER
+) RETURN NUMBER AS
+    v_total NUMBER := 0;
+BEGIN
+    SELECT NVL(SUM(Salary), 0)
+    INTO v_total
+    FROM EMPLOYEE
+    WHERE Dept_ID = p_dept_id;
+    RETURN v_total;
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN -1;
+END;
+/
+
+-- Call function
+SELECT dept_total_salary(10) AS Total_Salary FROM DUAL;
+
+-- ─────────────────────────────────────────────
+-- 14. STUDENT ATTENDANCE PL/SQL
+-- ─────────────────────────────────────────────
+
+-- Create table
+CREATE TABLE STUDENT_ATTENDANCE (
+    Stud_ID      NUMBER PRIMARY KEY,
+    Stud_Name    VARCHAR2(50),
+    Present_Days NUMBER,
+    Total_Days   NUMBER
+);
+
+-- PL/SQL Block: Check attendance eligibility
+DECLARE
+    CURSOR stud_cur IS
+        SELECT Stud_ID, Stud_Name,
+               ROUND((Present_Days / Total_Days) * 100, 2) AS Pct
+        FROM STUDENT_ATTENDANCE;
+BEGIN
+    FOR rec IN stud_cur LOOP
+        IF rec.Pct < 75 THEN
+            DBMS_OUTPUT.PUT_LINE(rec.Stud_Name ||
+                ' [DETAINED] Attendance: ' || rec.Pct || '%');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE(rec.Stud_Name ||
+                ' [ELIGIBLE] Attendance: ' || rec.Pct || '%');
+        END IF;
+    END LOOP;
+END;
+/
+
+-- ─────────────────────────────────────────────
+-- 15. HOTEL ROOM BOOKING PL/SQL PROCEDURE
+-- ─────────────────────────────────────────────
+
+CREATE TABLE ROOM (
+    Room_No    NUMBER PRIMARY KEY,
+    Room_Type  VARCHAR2(20),
+    Price      NUMBER,
+    Status     VARCHAR2(20) DEFAULT 'AVAILABLE'
+);
+
+CREATE TABLE BOOKING (
+    Booking_ID NUMBER PRIMARY KEY,
+    Room_No    NUMBER REFERENCES ROOM(Room_No),
+    Guest_Name VARCHAR2(50),
+    Check_In   DATE,
+    Check_Out  DATE
+);
+
+CREATE SEQUENCE SEQ_BOOK START WITH 1 INCREMENT BY 1;
+
+CREATE OR REPLACE PROCEDURE book_room (
+    p_room_no   IN NUMBER,
+    p_guest     IN VARCHAR2,
+    p_check_in  IN DATE,
+    p_check_out IN DATE
+) AS
+    v_status VARCHAR2(20);
+BEGIN
+    SELECT Status INTO v_status
+    FROM ROOM WHERE Room_No = p_room_no;
+
+    IF v_status = 'AVAILABLE' THEN
+        INSERT INTO BOOKING VALUES
+            (SEQ_BOOK.NEXTVAL, p_room_no, p_guest, p_check_in, p_check_out);
+        UPDATE ROOM SET Status = 'BOOKED'
+        WHERE Room_No = p_room_no;
+        COMMIT;
+        DBMS_OUTPUT.PUT_LINE('Room ' || p_room_no || ' booked for ' || p_guest);
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Room ' || p_room_no || ' is NOT available.');
+    END IF;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('Room ' || p_room_no || ' does not exist.');
+    WHEN OTHERS THEN
+        ROLLBACK;
+        DBMS_OUTPUT.PUT_LINE('Error: ' || SQLERRM);
+END;
+/
+
+-- Execute
+EXEC book_room(101, 'Rahul Sharma', SYSDATE, SYSDATE + 3);
+
+-- ─────────────────────────────────────────────
+-- 16. LOOP TYPES IN PL/SQL
+-- ─────────────────────────────────────────────
+
+-- Simple LOOP
+DECLARE
+    i NUMBER := 1;
+BEGIN
+    LOOP
+        DBMS_OUTPUT.PUT_LINE('Count: ' || i);
+        i := i + 1;
+        EXIT WHEN i > 5;
+    END LOOP;
+END;
+/
+
+-- WHILE LOOP
+DECLARE
+    i NUMBER := 1;
+BEGIN
+    WHILE i <= 5 LOOP
+        DBMS_OUTPUT.PUT_LINE('While Count: ' || i);
+        i := i + 1;
+    END LOOP;
+END;
+/
+
+-- FOR LOOP
+BEGIN
+    FOR i IN 1..5 LOOP
+        DBMS_OUTPUT.PUT_LINE('For Count: ' || i);
+    END LOOP;
+END;
+/
+
+-- ─────────────────────────────────────────────
+-- 17. EXCEPTION HANDLING
+-- ─────────────────────────────────────────────
+
+DECLARE
+    v_salary EMPLOYEE.Salary%TYPE;
+BEGIN
+    SELECT Salary INTO v_salary
+    FROM EMPLOYEE WHERE Emp_ID = 9999;  -- non-existent
+
+    DBMS_OUTPUT.PUT_LINE('Salary: ' || v_salary);
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        DBMS_OUTPUT.PUT_LINE('No employee found with that ID.');
+    WHEN TOO_MANY_ROWS THEN
+        DBMS_OUTPUT.PUT_LINE('Multiple rows returned.');
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Unexpected error: ' || SQLERRM);
+END;
+/
+
+-- User-defined exception
+DECLARE
+    e_low_salary EXCEPTION;
+    v_salary NUMBER := 5000;
+BEGIN
+    IF v_salary < 10000 THEN
+        RAISE e_low_salary;
+    END IF;
+EXCEPTION
+    WHEN e_low_salary THEN
+        DBMS_OUTPUT.PUT_LINE('Salary below minimum threshold!');
+END;
+/
+
+
+-- ============================================================
+-- UNIT III — NORMALIZATION (DDL Examples)
+-- ============================================================
+
+-- Unnormalized (before normalization)
+CREATE TABLE EMP_DEPT_UNNORM (
+    Emp_ID      NUMBER,
+    Emp_Name    VARCHAR2(50),
+    Dept_ID     NUMBER,
+    Dept_Name   VARCHAR2(50),
+    Dept_Loc    VARCHAR2(50),
+    Proj_ID     NUMBER,
+    Proj_Name   VARCHAR2(100),
+    Hours       NUMBER
+);
+
+-- After 3NF normalization:
+CREATE TABLE DEPT_NF (
+    Dept_ID   NUMBER       PRIMARY KEY,
+    Dept_Name VARCHAR2(50) NOT NULL,
+    Dept_Loc  VARCHAR2(50)
+);
+
+CREATE TABLE EMP_NF (
+    Emp_ID   NUMBER       PRIMARY KEY,
+    Emp_Name VARCHAR2(50) NOT NULL,
+    Dept_ID  NUMBER       REFERENCES DEPT_NF(Dept_ID)
+);
+
+CREATE TABLE PROJ_NF (
+    Proj_ID   NUMBER        PRIMARY KEY,
+    Proj_Name VARCHAR2(100) NOT NULL
+);
+
+CREATE TABLE WORKS_ON_NF (
+    Emp_ID  NUMBER REFERENCES EMP_NF(Emp_ID),
+    Proj_ID NUMBER REFERENCES PROJ_NF(Proj_ID),
+    Hours   NUMBER,
+    PRIMARY KEY (Emp_ID, Proj_ID)
+);
+
+
+-- ============================================================
+-- UNIT V — MONGODB CRUD (run in MongoDB shell / mongosh)
+-- ============================================================
+
+/*
+-- Switch to database
+use college
+
+-- ─────────────────────────────────────────────
+-- INSERT (Create)
+-- ─────────────────────────────────────────────
+
+db.students.insertOne({
+  "roll_no": 101,
+  "name": "Aarav Shah",
+  "marks": 85,
+  "subject": "DBMS",
+  "city": "Mumbai"
+})
+
+db.students.insertMany([
+  { "roll_no": 102, "name": "Priya Kulkarni", "marks": 90, "subject": "OS" },
+  { "roll_no": 103, "name": "Rohit Mehra",    "marks": 75, "subject": "DBMS" },
+  { "roll_no": 104, "name": "Sneha Patil",    "marks": 60, "subject": "CN" },
+  { "roll_no": 105, "name": "Karan Joshi",    "marks": 45, "subject": "DBMS" }
+])
+
+-- ─────────────────────────────────────────────
+-- FIND (Read)
+-- ─────────────────────────────────────────────
+
+db.students.find()                                 -- all documents
+db.students.find({ marks: { $gt: 80 } })           -- marks > 80
+db.students.find({ subject: "DBMS" })              -- filter by subject
+db.students.findOne({ roll_no: 101 })              -- single document
+db.students.find({}, { name: 1, marks: 1, _id: 0 }) -- projection
+
+-- Query operators
+db.students.find({ marks: { $gte: 60, $lte: 90 } })  -- range
+db.students.find({ subject: { $in: ["DBMS", "OS"] } }) -- IN
+db.students.find({ $or: [ { marks: { $gt: 85 } }, { subject: "CN" } ] }) -- OR
+db.students.find({ city: { $exists: true } })          -- field exists
+
+-- Sort, Limit, Skip (pagination)
+db.students.find().sort({ marks: -1 })             -- descending
+db.students.find().sort({ marks: 1 }).limit(3)     -- top 3
+db.students.find().skip(2).limit(2)                -- page 2
+
+-- ─────────────────────────────────────────────
+-- UPDATE
+-- ─────────────────────────────────────────────
+
+db.students.updateOne(
+  { roll_no: 101 },
+  { $set: { marks: 92, grade: "A" } }
+)
+
+db.students.updateMany(
+  { marks: { $lt: 50 } },
+  { $set: { result: "FAIL" } }
+)
+
+db.students.updateOne(
+  { roll_no: 103 },
+  { $inc: { marks: 5 } }                          -- increment by 5
+)
+
+-- Upsert: insert if not exists
+db.students.updateOne(
+  { roll_no: 110 },
+  { $set: { name: "New Student", marks: 70 } },
+  { upsert: true }
+)
+
+-- ─────────────────────────────────────────────
+-- DELETE
+-- ─────────────────────────────────────────────
+
+db.students.deleteOne({ roll_no: 105 })
+db.students.deleteMany({ marks: { $lt: 40 } })
+db.students.deleteMany({})                         -- delete all
+
+-- ─────────────────────────────────────────────
+-- AGGREGATION PIPELINE
+-- ─────────────────────────────────────────────
+
+-- Average marks per subject
+db.students.aggregate([
+  { $match: { marks: { $gte: 0 } } },
+  { $group: {
+      _id: "$subject",
+      avgMarks: { $avg: "$marks" },
+      maxMarks: { $max: "$marks" },
+      minMarks: { $min: "$marks" },
+      count:    { $sum: 1 }
+  }},
+  { $sort: { avgMarks: -1 } },
+  { $project: {
+      Subject: "$_id",
+      Average: { $round: ["$avgMarks", 2] },
+      Highest: "$maxMarks",
+      Lowest:  "$minMarks",
+      Students: "$count",
+      _id: 0
+  }}
+])
+
+-- Total marks of students scoring above 70
+db.students.aggregate([
+  { $match: { marks: { $gt: 70 } } },
+  { $group: {
+      _id: null,
+      totalMarks: { $sum: "$marks" },
+      studentCount: { $sum: 1 }
+  }}
+])
+
+-- $lookup (JOIN equivalent)
+db.orders.aggregate([
+  { $lookup: {
+      from: "customers",
+      localField: "customer_id",
+      foreignField: "_id",
+      as: "customer_info"
+  }}
+])
+
+-- ─────────────────────────────────────────────
+-- MAP-REDUCE
+-- ─────────────────────────────────────────────
+
+var mapFunction = function() {
+  emit(this.subject, 1);       -- key = subject, value = 1
+};
+
+var reduceFunction = function(key, values) {
+  return Array.sum(values);    -- sum all 1s for each subject
+};
+
+db.students.mapReduce(
+  mapFunction,
+  reduceFunction,
+  { out: "subject_count" }
+)
+
+-- View result
+db.subject_count.find()
+
+-- Map-Reduce for average marks
+var mapAvg = function() {
+  emit(this.subject, { total: this.marks, count: 1 });
+};
+
+var reduceAvg = function(key, values) {
+  var result = { total: 0, count: 0 };
+  values.forEach(function(v) {
+    result.total += v.total;
+    result.count += v.count;
+  });
+  return result;
+};
+
+var finalizeAvg = function(key, reducedVal) {
+  reducedVal.avg = reducedVal.total / reducedVal.count;
+  return reducedVal;
+};
+
+db.students.mapReduce(mapAvg, reduceAvg,
+  { out: "avg_marks_by_subject", finalize: finalizeAvg }
+)
+
+-- Indexes
+db.students.createIndex({ roll_no: 1 })           -- ascending index
+db.students.createIndex({ marks: -1 })            -- descending index
+db.students.createIndex({ name: 1 }, { unique: true })  -- unique index
+db.students.getIndexes()                          -- list indexes
+db.students.dropIndex({ roll_no: 1 })             -- drop index
+*/
+
+-- ============================================================
+-- END OF FILE
+-- ============================================================
