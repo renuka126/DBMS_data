@@ -11,3 +11,10 @@ data, and SQL has been one of the most fun parts of it!
 - Practice exercises
 - Notes on database concepts
 
+## What I'm Learning
+
+This repo tracks my progress through SQL and database fundamentals — from basic DDL/DML through to PL/SQL procedural concepts, transaction control, and database objects like triggers and views. It complements my broader coursework in:
+
+Relational database design & normalization (3NF)
+GCP / Cloud SQL coursework
+NPTEL DBMS coursework
