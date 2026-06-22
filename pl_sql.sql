@@ -1,6 +1,3 @@
--- ============================================================
--- PL/SQL BLOCKS
--- ============================================================
 
 -- ─────────────────────────────────────────────
  BASIC PL/SQL BLOCK
@@ -29,9 +26,6 @@ EXCEPTION
 END;
 /
 
--- ─────────────────────────────────────────────
--- EXPLICIT CURSOR
--- ─────────────────────────────────────────────
 
 DECLARE
     CURSOR emp_cur IS
@@ -50,20 +44,12 @@ BEGIN
 END;
 /
 
--- ─────────────────────────────────────────────
---  CURSOR FOR LOOP (Simpler syntax)
--- ─────────────────────────────────────────────
-
 BEGIN
     FOR rec IN (SELECT Emp_Name, Salary FROM EMPLOYEE WHERE Dept_ID = 10) LOOP
         DBMS_OUTPUT.PUT_LINE(rec.Emp_Name || ' -> ' || rec.Salary);
     END LOOP;
 END;
 /
-
--- ─────────────────────────────────────────────
---  PROCEDURE — Give bonus to a department
--- ─────────────────────────────────────────────
 
 CREATE OR REPLACE PROCEDURE give_bonus (
     p_dept_id IN NUMBER,
@@ -84,10 +70,6 @@ END;
 
 -- Execute procedure
 EXEC give_bonus(10, 10);
-
--- ─────────────────────────────────────────────
---  FUNCTION — Return total salary of dept
--- ─────────────────────────────────────────────
 
 CREATE OR REPLACE FUNCTION dept_total_salary (
     p_dept_id IN NUMBER
