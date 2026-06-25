@@ -25,7 +25,8 @@ UPDATE Accounts
 SET Balance = Balance + 3000
 WHERE AccountID = 102;
 
--- Undo changes after savepoint
+-- Undo changes after savepoint;
+
 ROLLBACK TO TransferPoint;
 
 COMMIT;
