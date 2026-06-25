@@ -8,6 +8,7 @@ CREATE TABLE Enrollment_Audit (
 );
 
 DELIMITER //
+
 CREATE TRIGGER trg_grade_update
 AFTER UPDATE ON Enrollments
 FOR EACH ROW

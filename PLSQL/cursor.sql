@@ -12,6 +12,7 @@ CREATE TABLE Employee (
 );
 
 -- Insert Sample Records
+
 INSERT INTO Employee VALUES
 (101, 'Rahul', 30000),
 (102, 'Priya', 35000),
@@ -19,9 +20,11 @@ INSERT INTO Employee VALUES
 (104, 'Sneha', 45000);
 
 -- Change Delimiter
+
 DELIMITER $$
 
 -- Create Procedure
+
 CREATE PROCEDURE DisplayEmployeeDetails()
 BEGIN
     -- Variables to store fetched data

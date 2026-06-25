@@ -13,6 +13,7 @@ DO
   INSERT INTO logs (message, created_at) VALUES ('test event ran', NOW());
 
 -- 4. Recurring event: runs every day at a fixed time
+
 CREATE EVENT daily_cleanup
 ON SCHEDULE EVERY 1 DAY
 STARTS '2026-06-22 02:00:00'
@@ -20,6 +21,7 @@ DO
   DELETE FROM logs WHERE created_at < NOW() - INTERVAL 30 DAY;
 
 -- 5. Recurring event with an end date
+
 CREATE EVENT weekly_report
 ON SCHEDULE EVERY 1 WEEK
 STARTS '2026-06-23 08:00:00'

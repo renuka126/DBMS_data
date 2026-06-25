@@ -69,6 +69,7 @@ END;
 /
 
 -- Execute procedure
+
 EXEC give_bonus(10, 10);
 
 CREATE OR REPLACE FUNCTION dept_total_salary (
