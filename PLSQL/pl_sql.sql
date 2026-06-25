@@ -1,7 +1,7 @@
 
--- ─────────────────────────────────────────────
- BASIC PL/SQL BLOCK
--- ─────────────────────────────────────────────
+
+-- BASIC PL/SQL BLOCK
+
 
 DECLARE
     v_name   EMPLOYEE.Emp_Name%TYPE;
@@ -90,11 +90,12 @@ END;
 -- Call function
 SELECT dept_total_salary(10) AS Total_Salary FROM DUAL;
 
--- ─────────────────────────────────────────────
+
 --  STUDENT ATTENDANCE PL/SQL
--- ─────────────────────────────────────────────
+
 
 -- Create table
+
 CREATE TABLE STUDENT_ATTENDANCE (
     Stud_ID      NUMBER PRIMARY KEY,
     Stud_Name    VARCHAR2(50),
@@ -121,9 +122,7 @@ BEGIN
 END;
 /
 
--- ─────────────────────────────────────────────
---  HOTEL ROOM BOOKING PL/SQL PROCEDURE
--- ─────────────────────────────────────────────
+-- HOTEL ROOM BOOKING PL/SQL PROCEDURE
 
 CREATE TABLE ROOM (
     Room_No    NUMBER PRIMARY KEY,
@@ -175,9 +174,9 @@ END;
 -- Execute
 EXEC book_room(101, 'Rahul Sharma', SYSDATE, SYSDATE + 3);
 
--- ─────────────────────────────────────────────
+
 --  LOOP TYPES IN PL/SQL
--- ─────────────────────────────────────────────
+
 
 -- Simple LOOP
 DECLARE
@@ -210,9 +209,8 @@ BEGIN
 END;
 /
 
--- ─────────────────────────────────────────────
 --  EXCEPTION HANDLING
--- ─────────────────────────────────────────────
+
 
 DECLARE
     v_salary EMPLOYEE.Salary%TYPE;

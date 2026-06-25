@@ -13,6 +13,7 @@ CREATE TABLE students (
 
 
 -- Insert students
+
 INSERT INTO students (student_id, name, gender, age, attendance_percentage, study_hours_per_week, parental_education, internet_access)
 VALUES
 (1, 'Aarav Sharma', 'M', 20, 85.5, 10, 'Graduate', 'Yes'),
@@ -22,12 +23,14 @@ VALUES
 (5, 'Vikram Joshi', 'M', 22, 70.0, 8, 'Graduate', 'No');
 
 -- Students who scored above the overall average final marks
+
 SELECT s.name, m.final_marks
 FROM students s
 JOIN marks m ON s.student_id = m.student_id
 WHERE m.final_marks > (SELECT AVG(final_marks) FROM marks);
 
 -- Students who failed in any subject (final_marks < 40)
+
 SELECT name
 FROM students
 WHERE student_id IN (
@@ -35,6 +38,7 @@ WHERE student_id IN (
 );
 
 -- Subquery in FROM: find the top scorer overall
+
 SELECT name, total_marks
 FROM (
     SELECT s.name, SUM(m.final_marks) AS total_marks
@@ -46,6 +50,7 @@ ORDER BY total_marks DESC
 LIMIT 1;
 
 -- Correlated subquery: students above their gender's average attendance
+
 SELECT s1.name, s1.gender, s1.attendance_percentage
 FROM students s1
 WHERE s1.attendance_percentage > (
@@ -55,6 +60,8 @@ WHERE s1.attendance_percentage > (
 );
 
 -- Students who have never failed any subject
+
+
 SELECT name
 FROM students
 WHERE student_id NOT IN (
@@ -62,6 +69,7 @@ WHERE student_id NOT IN (
 );
 
 -- EXISTS subquery: students who have at least one mark record
+
 SELECT name
 FROM students s
 WHERE EXISTS (

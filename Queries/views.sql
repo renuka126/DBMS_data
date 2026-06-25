@@ -24,4 +24,5 @@ SELECT E.Emp_ID, E.Emp_Name, E.Salary, D.Dept_Name
 FROM EMPLOYEE E JOIN DEPARTMENT D ON E.Dept_ID = D.Dept_ID;
 
 -- Drop view
+
 DROP VIEW High_Earners;

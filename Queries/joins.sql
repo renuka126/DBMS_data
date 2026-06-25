@@ -16,26 +16,31 @@ CREATE TABLE EMPLOYEE (
 
 
 -- INNER JOIN
+
 SELECT E.Emp_Name, D.Dept_Name
 FROM EMPLOYEE E
 INNER JOIN DEPARTMENT D ON E.Dept_ID = D.Dept_ID;
 
 -- LEFT JOIN (all employees even without department)
+
 SELECT E.Emp_Name, D.Dept_Name
 FROM EMPLOYEE E
 LEFT JOIN DEPARTMENT D ON E.Dept_ID = D.Dept_ID;
 
 -- RIGHT JOIN
+
 SELECT E.Emp_Name, D.Dept_Name
 FROM EMPLOYEE E
 RIGHT JOIN DEPARTMENT D ON E.Dept_ID = D.Dept_ID;
 
 -- FULL OUTER JOIN
+
 SELECT E.Emp_Name, D.Dept_Name
 FROM EMPLOYEE E
 FULL OUTER JOIN DEPARTMENT D ON E.Dept_ID = D.Dept_ID;
 
 -- SELF JOIN (find employees in same department)
+
 SELECT A.Emp_Name AS Emp1, B.Emp_Name AS Emp2, A.Dept_ID
 FROM EMPLOYEE A, EMPLOYEE B
 WHERE A.Dept_ID = B.Dept_ID AND A.Emp_ID <> B.Emp_ID;
